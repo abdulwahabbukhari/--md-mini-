@@ -1,17 +1,14 @@
 const { cmd } = require('../arslan');
-const { updateUserConfig } = require('../lib/database');
+const { updateUserConfigInMongoDB } = require('../lib/database'); // ✅ FIXED import
 
 // Helper function to update config in memory and database
 const updateConfig = async (key, value, botNumber, config, reply) => {
     try {
-        // 1. Update in-memory config (Immediate)
         config[key] = value;
-        
-        // 2. Update in Database (Persistent)
         const newConfig = { ...config }; 
         newConfig[key] = value;
         
-        await updateUserConfig(botNumber, newConfig);
+        await updateUserConfigInMongoDB(botNumber, newConfig);
         
         return reply(`✅ *${key}* has been updated to: *${value}*`);
     } catch (e) {
@@ -21,7 +18,7 @@ const updateConfig = async (key, value, botNumber, config, reply) => {
 };
 
 // ============================================================
-// 1. PRESENCE MANAGEMENT (Recording / Typing)
+// 1. PRESENCE MANAGEMENT
 // ============================================================
 
 cmd({
@@ -65,7 +62,7 @@ async(conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
 });
 
 // ============================================================
-// 2. CALL MANAGEMENT (Anti-Call)
+// 2. CALL MANAGEMENT
 // ============================================================
 
 cmd({
@@ -84,12 +81,12 @@ async(conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
     } else if (value === 'off' || value === 'false') {
         await updateConfig('ANTI_CALL', 'false', botNumber, config, reply);
     } else {
-        reply(`*ABHI :❯ ${config.AUTO_RECORDING} HAI 😊*\n\n*JO BHI CALL KARE GA KHUD HI REJECT HO JAYE GE 😃 YE SETTING ON KARNE K LIE LIKHO ☺️*\n*👑 ❮ANTICALL ON❯ 👑*\n*ANTICALL OFF KARNE K LIE LIKHO ☺️*\n*👑 ❮ANTICALL OFF❯ 👑*`);
+        reply(`*ABHI :❯ ${config.ANTI_CALL} HAI 😊*\n\n*JO BHI CALL KARE GA KHUD HI REJECT HO JAYE GE 😃 YE SETTING ON KARNE K LIE LIKHO ☺️*\n*👑 ❮ANTICALL ON❯ 👑*\n*ANTICALL OFF KARNE K LIE LIKHO ☺️*\n*👑 ❮ANTICALL OFF❯ 👑*`);
     }
 });
 
 // ============================================================
-// 3. GROUP MANAGEMENT (Welcome / Goodbye)
+// 3. GROUP MANAGEMENT
 // ============================================================
 
 cmd({
@@ -149,7 +146,7 @@ async(conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
     } else if (value === 'off' || value === 'false') {
         await updateConfig('READ_MESSAGE', 'false', botNumber, config, reply);
     } else {
-        reply(`*ABHI ${config.READ_MESSAGE} HAI 😊*\n*JO BHI MSG KARE GA USKA MSG KHUD HI SEEN `);
+        reply(`*ABHI ${config.READ_MESSAGE} HAI 😊*\n*JO BHI MSG KARE GA USKA MSG KHUD HI SEEN HO JAYE GA*\n*👑 ❮AUTOREAD ON❯ 👑*\n*👑 ❮AUTOREAD OFF❯ 👑*`);
     }
 });
 
@@ -165,18 +162,18 @@ async(conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
     const value = args[0]?.toLowerCase();
     
     if (value === 'on' || value === 'true') {
-        await updateConfig('AUTO_VIEW_STATUS', 'true', botNumber, config, reply);
+        await updateConfig('AUTO_STATUS_SEEN', 'true', botNumber, config, reply);
     } else if (value === 'off' || value === 'false') {
-        await updateConfig('AUTO_VIEW_STATUS', 'false', botNumber, config, reply);
+        await updateConfig('AUTO_STATUS_SEEN', 'false', botNumber, config, reply);
     } else {
-        reply(`*ABHI ${config.AUTO_VIEW_STATUS} HAI 😊*\n\n*JO BHI STATUS LAGAYE GA KHUD HI SEEN HO JAYE GA 😃 YEH SETTING ON KARNE K LIE LIKHO ☺️*\n*👑 ❮AUTOSTATUSVIEW ON❯ 👑*\n*OFF KARNE KE LIE LIKHO ☺️*\n*👑 ❮AUTOSTATUSVIEW OFF❯ 👑*`);
+        reply(`*ABHI ${config.AUTO_STATUS_SEEN} HAI 😊*\n\n*JO BHI STATUS LAGAYE GA KHUD HI SEEN HO JAYE GA 😃 YEH SETTING ON KARNE K LIE LIKHO ☺️*\n*👑 ❮AUTOSTATUSVIEW ON❯ 👑*\n*OFF KARNE KE LIE LIKHO ☺️*\n*👑 ❮AUTOSTATUSVIEW OFF❯ 👑*`);
     }
 });
 
 cmd({
     pattern: "autolikestatus",
     alias: ["als"],
-    desc: "Auto like status updates",
+    desc: "Auto like/react status updates",
     category: "settings",
     react: "❤️"
 },
@@ -185,11 +182,11 @@ async(conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
     const value = args[0]?.toLowerCase();
     
     if (value === 'on' || value === 'true') {
-        await updateConfig('AUTO_LIKE_STATUS', 'true', botNumber, config, reply);
+        await updateConfig('AUTO_STATUS_REACT', 'true', botNumber, config, reply);
     } else if (value === 'off' || value === 'false') {
-        await updateConfig('AUTO_LIKE_STATUS', 'false', botNumber, config, reply);
+        await updateConfig('AUTO_STATUS_REACT', 'false', botNumber, config, reply);
     } else {
-        reply(`Current Status: ${config.AUTO_LIKE_STATUS}\nUsage: .autolikestatus on/off`);
+        reply(`*ABHI ${config.AUTO_STATUS_REACT} HAI 😊*\n\n*STATUS PE REACTION (LIKE) ON KARNE KE LIE:*\n*👑 ❮AUTOLIKESTATUS ON❯ 👑*\n*OFF KARNE KE LIE:*\n*👑 ❮AUTOLIKESTATUS OFF❯ 👑*`);
     }
 });
 
@@ -209,9 +206,12 @@ async(conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
     const validModes = ['public', 'private', 'groups', 'inbox'];
 
     if (validModes.includes(mode)) {
-        await updateConfig('WORK_TYPE', mode, botNumber, config, reply);
+        await updateConfig('MODE', mode, botNumber, config, reply);
+        config.WORK_TYPE = mode;
+        await updateUserConfigInMongoDB(botNumber, config);
+        return reply(`✅ *Mode* updated to: *${mode}*`);
     } else {
-        reply(`*GHALAT LIKHA HAI 🥺*\n*ESE LIKHO ☺️*COMMAND ❮MODE❯ LIKH KER IN ME SE KOI EK WORD LIKHO JAHA AP CHAHTE HO K BOT WORK KRE 🤗*\n ${validModes.join(', ')}\nCurrent: ${config.WORK_TYPE}`);
+        reply(`*GHALAT LIKHA HAI 🥺*\n*ESE LIKHO ☺️*COMMAND ❮MODE❯ LIKH KER IN ME SE KOI EK WORD LIKHO JAHA AP CHAHTE HO K BOT WORK KRE 🤗*\n ${validModes.join(', ')}\nCurrent: ${config.MODE || config.WORK_TYPE}`);
     }
 });
 
@@ -223,14 +223,18 @@ cmd({
 },
 async(conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
     if (!isOwner) return reply("*YEH COMMAND SIRF MERE LIE HAI 😎*");
-    const newPrefix = args[0];
+    let newPrefix = args[0];
 
     if (newPrefix) {
-        // Ensure prefix is short (single character or short string)
-        if (newPrefix.length > 1 && newPrefix !== 'noprefix') return reply("❌ Prefix must be short (e.g. . or ! or #)");
+        if (newPrefix.toLowerCase() === 'noprefix') {
+            newPrefix = '';
+        } else if (newPrefix.length > 1) {
+            return reply("❌ Prefix must be a single character (or 'noprefix')");
+        }
         
         await updateConfig('PREFIX', newPrefix, botNumber, config, reply);
     } else {
-        reply(`*ABHI PREFIX ❮ ${config.PREFIX} ❯ HAI ☺️*\nJIS BHI NISHAN AP BOT CHALANA CHAHTE HAI WO NISHAN SET KERE ESE 😊*\n*❮SETPREFIX . ! + _ -❯*\n*JO BHI APKA DIL KARE 😍❣️*`);
+        const displayPrefix = config.PREFIX || '(none)';
+        reply(`*ABHI PREFIX ❮ ${displayPrefix} ❯ HAI ☺️*\nJIS BHI NISHAN AP BOT CHALANA CHAHTE HAI WO NISHAN SET KERE ESE 😊*\n*❮SETPREFIX . ! + _ -❯*\n*YA 'noprefix' LIKHO TO PREFIX HAT JAYEGA*\n*JO BHI APKA DIL KARE 😍❣️*`);
     }
 });
