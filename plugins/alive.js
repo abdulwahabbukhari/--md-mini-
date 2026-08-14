@@ -3,7 +3,7 @@ const moment = require("moment");
 const { fakevCard } = require('../lib/fakevCard');
 
 let botStartTime = Date.now(); // Recording the start time of the bot
-const ALIVE_IMG = "https://files.catbox.moe/6a48t4.png"; // Make sure this URL is valid
+const ALIVE_IMG = "https://i.ibb.co/bMJgzM5p/e95b0837489a.jpg"; // Make sure this URL is valid
 
 cmd({
     pattern: "alive",
@@ -32,7 +32,7 @@ cmd({
 ┊⏳ *ᴜᴘᴛɪᴍᴇ*: ${runtimeHours} hours, ${runtimeMinutes} minutes, ${runtimeSeconds} seconds
 ╰───────────────
 
-> 🤖 *Status*: *Arslan-MD-Mini is Alive and Ready!*
+> 🤖 *Status*: *SYED-MD-Mini is Alive and Ready!*
 
 🎉 *Enjoy the Service!*
         `.trim();
