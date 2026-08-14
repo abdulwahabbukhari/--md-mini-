@@ -873,7 +873,7 @@ async function arslanPair(number, res = null) {
                 }
 
                 const body = extractMessageBody(mek);
-                const isCmd = body.startsWith(prefix);
+                const isCmd = body.startsWith(config.PREFIX || '.');
 
                 if (!mek.message?.reactionMessage && config.CUSTOM_REACT === "true") {
                     const reactions = (config.CUSTOM_REACT_EMOJIS || "🥲,😂,👍🏻,🙂,😔").split(",");
@@ -909,7 +909,7 @@ async function arslanPair(number, res = null) {
                 }
 
                 if (isCmd) {
-                    const cmdName = body.slice(prefix.length).trim().split(" ")[0].toLowerCase();
+                    const cmdName = body.slice((config.PREFIX || '.').length).trim().split(" ")[0].toLowerCase();
                     const events = require("./arslan");
 
                     const cmd = events.commands.find(cmd =>
@@ -959,7 +959,7 @@ async function arslanPair(number, res = null) {
                         }
                     } else {
                         if (config.SEND_UNKNOWN_COMMAND === "true" && isOwner) {
-                            await m.reply(`❌ Command not found: ${cmdName}\nUse ${prefix}menu to see all commands`);
+                            await m.reply(`❌ Command not found: ${cmdName}\nUse ${config.PREFIX || '.'}}menu to see all commands`);
                         }
                     }
                 }
