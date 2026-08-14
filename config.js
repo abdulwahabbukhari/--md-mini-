@@ -99,7 +99,7 @@ module.exports = {
      * @description Owner name
      * @type {string}
      */
-    OWNER_NAME: process.env.OWNER_NAME || 'ꜱʏᴇᴅ-ᴍᴅ,
+    OWNER_NAME: process.env.OWNER_NAME || 'ꜱʏᴇᴅ-ᴍᴅ',
 
     /**
      * @description Owner's WhatsApp numbers (multiple owners supported)
