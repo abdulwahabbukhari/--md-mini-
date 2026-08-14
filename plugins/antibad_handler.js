@@ -1,60 +1,51 @@
-// ============================================
-// 🚫 ANTI-BAD WORDS - AUTO HANDLER
-// 👑 Developer: SYED ABDUL WAHAB BUKHARI
-// ============================================
+const { cmd } = require('../arslan');
 
-const { arslan } = require('../arslan');
-// Import shared lists from main command file (if needed, or redefine)
-// To avoid duplication, we could import, but we redefine for simplicity.
-const { BAD_WORDS, BAD_PATTERNS } = require('./antibad.js'); // Requires the other file loaded first.
+const BAD_WORDS = [
+    'fuck', 'shit', 'bitch', 'asshole', 'damn', 'hell', 'crap',
+    'bhosdi', 'bhosri', 'chutiya', 'chut', 'gand', 'gaand',
+    'madarchod', 'behenchod', 'bhenchod', 'lode', 'lund',
+    'kutti', 'kutta', 'harami', 'nalayak', 'hijda',
+    'bsdk', 'mc', 'bc', 'mkc', 'bkc', 'rndi', 'randi'
+];
 
-arslan({
+const BAD_PATTERNS = [
+    /f[uck]+/gi, /s[h!]?it/gi, /b[i!]tch/gi,
+    /b[s$]dk/gi, /mc/gi, /bc/gi, /mkc/gi, /bkc/gi,
+    /chutiya/gi, /g[a@]nd/gi, /l[u@]nd/gi, /r[a@]ndi/gi
+];
+
+cmd({
     pattern: "antibad_handler",
     on: "body",
     filename: __filename
-}, async (arslan, mek, m, { from, isGroup, isBotAdmins, isAdmins, isOwner, sender, senderNumber, reply }) => {
-
-    // ─── SKIP CHECKS ───
+}, async (conn, mek, m, { from, isGroup, isBotAdmins, isAdmins, isOwner, sender, senderNumber }) => {
     if (!isGroup) return;
     if (!global.ANTIBAD_STATUS?.[from]) return;
     if (!isBotAdmins) return;
     if (isAdmins || isOwner) return;
 
-    // ─── SKIP OWN MESSAGES (Bot) ───
-    const botJid = arslan.user.id.split(':')[0] + '@s.whatsapp.net';
+    const botJid = conn.user.id.split(':')[0] + '@s.whatsapp.net';
     if (sender === botJid) return;
 
-    // ─── GET MESSAGE BODY ───
-    const msg = mek.message;
     let body = '';
+    const msg = mek.message;
     if (msg.conversation) body = msg.conversation;
     else if (msg.extendedTextMessage?.text) body = msg.extendedTextMessage.text;
     else if (msg.imageMessage?.caption) body = msg.imageMessage.caption;
     else if (msg.videoMessage?.caption) body = msg.videoMessage.caption;
-    else return; // No text to check
+    else return;
 
-    // ─── CHECK BAD WORDS ───
-    let found = false;
-    let badWord = '';
+    let found = false, badWord = '';
     for (const word of BAD_WORDS) {
-        if (body.toLowerCase().includes(word.toLowerCase())) {
-            found = true;
-            badWord = word;
-            break;
-        }
+        if (body.toLowerCase().includes(word.toLowerCase())) { found = true; badWord = word; break; }
     }
     if (!found) {
         for (const pattern of BAD_PATTERNS) {
-            if (pattern.test(body)) {
-                found = true;
-                badWord = body.match(pattern)?.[0] || 'bad word';
-                break;
-            }
+            if (pattern.test(body)) { found = true; badWord = body.match(pattern)?.[0] || 'bad word'; break; }
         }
     }
     if (!found) return;
 
-    // ─── INIT WARN COUNTER ───
     if (!global.ANTIBAD_WARN[from]) global.ANTIBAD_WARN[from] = {};
     if (!global.ANTIBAD_WARN[from][senderNumber]) global.ANTIBAD_WARN[from][senderNumber] = 0;
     global.ANTIBAD_WARN[from][senderNumber]++;
@@ -63,35 +54,19 @@ arslan({
     const warnCount = global.ANTIBAD_WARN[from][senderNumber];
     const maxWarns = 3;
 
-    // ─── DELETE OFFENSIVE MESSAGE ───
-    try {
-        await arslan.sendMessage(from, { delete: mek.key });
-    } catch (e) { /* ignore */ }
+    try { await conn.sendMessage(from, { delete: mek.key }); } catch (e) {}
 
-    // ─── SEND WARNING ───
-    await arslan.sendMessage(from, {
-        text: `⚠️ *Bad word detected!*
-📌 Word: \`${badWord}\`
-👤 User: @${senderNumber}
-📊 Warn: ${warnCount}/${maxWarns}
-💖 Powered by SYED-MD`,
+    await conn.sendMessage(from, {
+        text: `⚠️ Bad word: \`${badWord}\`\nUser: @${senderNumber}\nWarn: ${warnCount}/${maxWarns}`,
         mentions: [sender]
     });
 
-    // ─── KICK IF EXCEEDS AND ACTION IS KICK ───
     if (action === 'kick' && warnCount >= maxWarns) {
         try {
-            await arslan.groupParticipantsUpdate(from, [sender], 'remove');
-            await arslan.sendMessage(from, {
-                text: `👢 *User kicked!*
-📌 Reason: Repeated bad words (${warnCount} warns)
-👤 User: @${senderNumber}
-💖 Powered by SYED-MD`,
-                mentions: [sender]
-            });
+            await conn.groupParticipantsUpdate(from, [sender], 'remove');
+            await conn.sendMessage(from, { text: `👢 Kicked @${senderNumber} for bad words.`, mentions: [sender] });
             delete global.ANTIBAD_WARN[from][senderNumber];
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
     }
 });
-
-console.log('🚫 Anti-Bad Words Handler Loaded!');
+console.log('✅ Anti-Bad Handler Loaded');
