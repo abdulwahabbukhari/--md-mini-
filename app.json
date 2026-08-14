@@ -1,0 +1,18 @@
+{
+  "name": "♥️SYED MD PAIR♥️",
+  "description": "SESSION ID GENERATOR FOR WHATSAPP BOTS",
+  "logo": "https://i.ibb.co/WN7G5fv7/0a79e7b3e4c3.jpg",
+  "repository": "https://github.com",
+  "keywords": ["@ꜱʏᴇᴅ-ᴍᴅ"],
+  "success_url": "/", 
+  "buildpacks": [
+    { "url": "https://github.com/heroku/heroku-buildpack-nodejs#latest" }
+  ],
+  "env": {      
+    "MESSAGE": {
+      "description": "Msg Attached With Session ID",
+      "value": "🔰 BY || SYED-MD OFFICIAL 🔰",
+      "required": false 
+    }
+  }
+}
