@@ -555,9 +555,7 @@ async function arslanPair(number, res = null) {
             syncFullHistory: true,
             markOnlineOnConnect: true,
             browser: ['Mac OS', 'Safari', '10.15.7'],
-            getMessage: async () => ({}),
-            }
-        });
+            getMessage: async () => ({}), } });
 
         socketCreationTime.set(sanitizedNumber, Date.now());
         activeSockets.set(sanitizedNumber, conn);
