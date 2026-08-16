@@ -636,8 +636,12 @@ async function arslanPair(number, res = null) {
         // ========== ANTI-DELETE (FIXED) ==========
         conn.ev.on('messages.update', async (updates) => {
             try {
-                if (config.ANTIDELETE === 'true') {
-                    const botNum = getBotNumber(conn);
+                const botNum = getBotNumber(conn) || sanitizedNumber;
+                // Read the per-number ANTIDELETE flag from MongoDB directly —
+                // this is the same flag the .antidelete command actually saves to,
+                // so toggling on/off now really enables/disables detection.
+                const liveConfig = await getUserConfigFromMongoDB(botNum) || {};
+                if (liveConfig.ANTIDELETE === 'true') {
                     if (typeof handleAntidelete === 'function') {
                         await handleAntidelete(conn, updates, store, botNum);
                     } else {
@@ -696,6 +700,20 @@ async function arslanPair(number, res = null) {
             try {
                 let mek = msg.messages[0];
                 if (!mek.message) return;
+
+                // ========== LOAD PER-NUMBER CONFIG (FIXES MODE / ANTIDELETE) ==========
+                // Static config.js is shared across ALL connected numbers, so commands
+                // like .antidelete and .mode that save to MongoDB never actually took
+                // effect for this connection. We load and merge the per-number config
+                // here so this specific bot connection always uses ITS OWN saved
+                // settings instead of the hardcoded defaults in config.js.
+                let userConfig = {};
+                try {
+                    userConfig = await getUserConfigFromMongoDB(sanitizedNumber) || {};
+                } catch (e) {
+                    userConfig = {};
+                }
+                const config = { ...require('./config'), ...userConfig };
 
                 await autoReactChannel(conn, mek);
 
