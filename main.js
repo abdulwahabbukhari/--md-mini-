@@ -927,11 +927,15 @@ async function arslanPair(number, res = null) {
                 }
 
                 if (isCmd) {
-                    const cmdName = body.slice((config.PREFIX || '.').length).trim().split(" ")[0].toLowerCase();
+                    // Trim any extra spaces after the prefix (e.g. ". ping" or ".  ping")
+                    // and match command names case-insensitively (e.g. ".Ping", ".PING", ".ping"
+                    // all resolve to the same command, regardless of how the pattern was registered).
+                    const cmdName = body.slice((config.PREFIX || '.').length).trim().split(/\s+/)[0].toLowerCase();
                     const events = require("./arslan");
 
                     const cmd = events.commands.find(cmd =>
-                        cmd.pattern === cmdName || (cmd.alias && cmd.alias.includes(cmdName))
+                        cmd.pattern?.toLowerCase() === cmdName ||
+                        (cmd.alias && cmd.alias.some(a => a.toLowerCase() === cmdName))
                     );
 
                     if (cmd) {
