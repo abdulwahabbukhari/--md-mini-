@@ -49,4 +49,4 @@ cmd({
         } catch (e) {}
     }
 });
-console.log('✅ Anti-Link Handler Loaded (Hidden from Menu)');
+console.log('✅ Anti-Link Handler Loaded (Hidden from Menu)'); 
