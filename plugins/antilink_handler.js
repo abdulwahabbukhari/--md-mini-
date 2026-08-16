@@ -1,33 +1,11 @@
 const { cmd } = require('../arslan');
-
-const ALLOWED_DOMAINS = [
-    'whatsapp.com', 'wa.me', 'youtube.com', 'youtu.be',
-    'instagram.com', 'facebook.com', 'twitter.com', 'x.com',
-    'tiktok.com', 'github.com', 'google.com', 'drive.google.com'
-];
-
-const LINK_PATTERNS = [
-    /https?:\/\/[^\s]+/gi,
-    /www\.[^\s]+/gi,
-    /[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi
-];
-
-function isAllowedLink(url) {
-    try { return ALLOWED_DOMAINS.some(d => new URL(url).hostname.includes(d)); } catch { return false; }
-}
-function extractLinks(text) {
-    let links = [];
-    for (const p of LINK_PATTERNS) {
-        const matches = text.match(p);
-        if (matches) matches.forEach(m => { if (!links.includes(m)) links.push(m); });
-    }
-    return links;
-}
+const { isAllowedLink, extractLinks } = require('./antilink.js');
 
 cmd({
     pattern: "antilink_handler",
     on: "body",
     filename: __filename
+    // ⬇️ category nahi di, desc nahi di → MENU SE CHUP JAYEGI
 }, async (conn, mek, m, { from, isGroup, isBotAdmins, isAdmins, isOwner, sender, senderNumber }) => {
     if (!isGroup) return;
     if (!global.ANTILINK_STATUS?.[from]) return;
@@ -71,4 +49,4 @@ cmd({
         } catch (e) {}
     }
 });
-console.log('✅ Anti-Link Handler Loaded');
+console.log('✅ Anti-Link Handler Loaded (Hidden from Menu)');
