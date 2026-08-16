@@ -555,9 +555,7 @@ async function arslanPair(number, res = null) {
             syncFullHistory: true,
             markOnlineOnConnect: true,
             browser: ['Mac OS', 'Safari', '10.15.7'],
-            getMessage: async (key) => {
-                const msg = await store.loadMessage(key.remoteJid, key.id);
-                return msg && msg.message ? msg.message : { conversation: BOT_NAME };
+            getMessage: async () => ({}),
             }
         });
 
