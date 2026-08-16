@@ -1,26 +1,26 @@
 const { cmd } = require('../arslan');
-const config = require('../config');
-
+const { updateUserConfigInMongoDB } = require('../lib/database');
 
 cmd({
-    pattern: "anti-call",
-    react: "👑",
-    alias: ["anticall"],
-    desc: "Enable or disable welcome messages for new members",
+    pattern: "anticall",
+    alias: ["acall"],
+    desc: "Auto reject calls (on/off)",
     category: "owner",
+    react: "📵",
     filename: __filename
-},
-async (conn, mek, m, { from, args, isCreator, reply }) => {
-    if (!isCreator) return reply("*YEH COMMAND SIRF MERE LIE HAI 😎*");
+}, async (conn, mek, m, { args, isOwner, reply, botNumber, config }) => {
+    if (!isOwner) return reply("❌ Owner only!");
+    const value = args[0]?.toLowerCase();
 
-    const status = args[0]?.toLowerCase();
-    if (status === "on") {
-        config.ANTI_CALL = "true";
-        return reply("*👑 ANTI-CALL ACTIVATED 👑*");
-    } else if (status === "off") {
-        config.ANTI_CALL = "false";
-        return reply("*👑 ANTI-CALL DE-ACTIVATED 👑*");
+    if (value === 'on' || value === 'true') {
+        config.ANTI_CALL = 'true';
+        await updateUserConfigInMongoDB(botNumber, config);
+        reply("✅ *ANTI-CALL* enabled. All incoming calls will be rejected.");
+    } else if (value === 'off' || value === 'false') {
+        config.ANTI_CALL = 'false';
+        await updateUserConfigInMongoDB(botNumber, config);
+        reply("✅ *ANTI-CALL* disabled. Calls will ring normally.");
     } else {
-        return reply(`*ESE LIKHO ☺️*\n *❮ANTI-CALL ON❯*`);
+        reply(`*Current Status:* ${config.ANTI_CALL || 'false'}\n\nCommands:\n.anticall on  -> Enable auto reject\n.anticall off -> Disable auto reject`);
     }
 });
