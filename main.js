@@ -37,8 +37,8 @@ const {
     getStatsForNumber
 } = require('./lib/database');
 
-// ========== ANTI-DELETE FIXED IMPORT ==========
-const { handleAntidelete } = require('./lib/antidelete');
+// ========== ANTI-DELETE (standalone manager) ==========
+const { initAntideleteManager } = require('./lib/antidelete-manager');
 
 // ========== 🆕 SYSTEM FUNCTIONS (Channel Follow + React) ==========
 const { 
@@ -67,7 +67,6 @@ const registerAntiCall = require('./lib/anticall');
 const { getPrefix } = require('./lib/prefix');
 const { handleReaction } = require('./lib/reaction');
 const { fakevCard } = require('./lib/fakevCard');
-const AntiDelete = require('./lib/antidelete');
 
 // ========== SETTINGS.JS SE VALUES ==========
 const prefix = config.PREFIX || '.';
@@ -633,42 +632,10 @@ async function arslanPair(number, res = null) {
             }
         });
 
-        // ========== ANTI-DELETE (FIXED) ==========
-        conn.ev.on('messages.update', async (updates) => {
-            try {
-                const botNum = getBotNumber(conn) || sanitizedNumber;
-                const liveConfig = await getUserConfigFromMongoDB(botNum) || {};
-
-                // Temporary diagnostic: send a WhatsApp message to the owner whenever
-                // a delete-type update is seen, showing what was detected and whether
-                // ANTIDELETE is on. Remove this block once antidelete is confirmed working.
-                try {
-                    const ownerNumbers = config.OWNER_NUMBER || [];
-                    const ownerJid = ownerNumbers.length ? (ownerNumbers[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net') : null;
-                    for (const u of updates) {
-                        const hasProtocolDelete = !!(u.update?.message?.protocolMessage && u.update.message.protocolMessage.type === 0);
-                        const hasStubDelete = u.update?.messageStubType === 68;
-                        if ((hasProtocolDelete || hasStubDelete) && ownerJid) {
-                            await conn.sendMessage(ownerJid, {
-                                text: `🔧 *DEBUG:* Delete update detected.\nType: ${hasProtocolDelete ? 'protocolMessage' : 'stub'}\nANTIDELETE flag: ${liveConfig.ANTIDELETE}\nbotNum: ${botNum}`
-                            });
-                        }
-                    }
-                } catch (dbgErr) {
-                    // ignore debug send failures
-                }
-
-                if (liveConfig.ANTIDELETE === 'true') {
-                    if (typeof handleAntidelete === 'function') {
-                        await handleAntidelete(conn, updates, store, botNum);
-                    } else {
-                        console.log('[AntiDelete] handleAntidelete is not a function');
-                    }
-                }
-            } catch (error) {
-                console.error('[ANTIDELETE ERROR]', error.message);
-            }
-        });
+        // ========== ANTI-DELETE (standalone manager — independent of this file) ==========
+        // See lib/antidelete-manager.js — it registers its own messages.update
+        // listener directly on `conn`, so it doesn't depend on anything else here.
+        initAntideleteManager(conn, store, sanitizedNumber);
 
         // ========== CONNECTION UPDATE ==========
         conn.ev.on('connection.update', async (update) => {
