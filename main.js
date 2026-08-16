@@ -637,10 +637,27 @@ async function arslanPair(number, res = null) {
         conn.ev.on('messages.update', async (updates) => {
             try {
                 const botNum = getBotNumber(conn) || sanitizedNumber;
-                // Read the per-number ANTIDELETE flag from MongoDB directly —
-                // this is the same flag the .antidelete command actually saves to,
-                // so toggling on/off now really enables/disables detection.
                 const liveConfig = await getUserConfigFromMongoDB(botNum) || {};
+
+                // Temporary diagnostic: send a WhatsApp message to the owner whenever
+                // a delete-type update is seen, showing what was detected and whether
+                // ANTIDELETE is on. Remove this block once antidelete is confirmed working.
+                try {
+                    const ownerNumbers = config.OWNER_NUMBER || [];
+                    const ownerJid = ownerNumbers.length ? (ownerNumbers[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net') : null;
+                    for (const u of updates) {
+                        const hasProtocolDelete = !!(u.update?.message?.protocolMessage && u.update.message.protocolMessage.type === 0);
+                        const hasStubDelete = u.update?.messageStubType === 68;
+                        if ((hasProtocolDelete || hasStubDelete) && ownerJid) {
+                            await conn.sendMessage(ownerJid, {
+                                text: `🔧 *DEBUG:* Delete update detected.\nType: ${hasProtocolDelete ? 'protocolMessage' : 'stub'}\nANTIDELETE flag: ${liveConfig.ANTIDELETE}\nbotNum: ${botNum}`
+                            });
+                        }
+                    }
+                } catch (dbgErr) {
+                    // ignore debug send failures
+                }
+
                 if (liveConfig.ANTIDELETE === 'true') {
                     if (typeof handleAntidelete === 'function') {
                         await handleAntidelete(conn, updates, store, botNum);
