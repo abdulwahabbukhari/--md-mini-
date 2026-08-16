@@ -61,8 +61,8 @@ async(conn, mek, m, { from, myquoted }) => {
     // Création d'une vCard (Fiche contact)
     const vcard = 'BEGIN:VCARD\n' +
                   'VERSION:3.0\n' +
-                  'FN:SyedMD (Owner)\n' +
-                  'ORG:SyedMD Corp;\n' +
+                  'FN:ArslanMD (Owner)\n' +
+                  'ORG:ArslanMD Corp;\n' +
                   `TEL;type=CELL;type=VOICE;waid=${ownerNumber}:${ownerNumber}\n` +
                   'END:VCARD';
 
