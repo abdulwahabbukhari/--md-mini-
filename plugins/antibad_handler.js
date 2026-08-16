@@ -1,23 +1,11 @@
 const { cmd } = require('../arslan');
-
-const BAD_WORDS = [
-    'fuck', 'shit', 'bitch', 'asshole', 'damn', 'hell', 'crap',
-    'bhosdi', 'bhosri', 'chutiya', 'chut', 'gand', 'gaand',
-    'madarchod', 'behenchod', 'bhenchod', 'lode', 'lund',
-    'kutti', 'kutta', 'harami', 'nalayak', 'hijda',
-    'bsdk', 'mc', 'bc', 'mkc', 'bkc', 'rndi', 'randi'
-];
-
-const BAD_PATTERNS = [
-    /f[uck]+/gi, /s[h!]?it/gi, /b[i!]tch/gi,
-    /b[s$]dk/gi, /mc/gi, /bc/gi, /mkc/gi, /bkc/gi,
-    /chutiya/gi, /g[a@]nd/gi, /l[u@]nd/gi, /r[a@]ndi/gi
-];
+const { BAD_WORDS, BAD_PATTERNS } = require('./antibad.js');
 
 cmd({
     pattern: "antibad_handler",
     on: "body",
     filename: __filename
+    // ⬇️ category nahi di, desc nahi di → MENU SE CHUP JAYEGI
 }, async (conn, mek, m, { from, isGroup, isBotAdmins, isAdmins, isOwner, sender, senderNumber }) => {
     if (!isGroup) return;
     if (!global.ANTIBAD_STATUS?.[from]) return;
@@ -69,4 +57,4 @@ cmd({
         } catch (e) {}
     }
 });
-console.log('✅ Anti-Bad Handler Loaded');
+console.log('✅ Anti-Bad Handler Loaded (Hidden from Menu)');
