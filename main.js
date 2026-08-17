@@ -204,8 +204,14 @@ function createStore() {
         bind(ev) {
             ev.on('messages.upsert', ({ messages }) => {
                 for (const msg of messages) {
-                    const jid = msg.key && msg.key.remoteJid;
+                    let jid = msg.key && msg.key.remoteJid;
                     if (!jid) continue;
+                    // Normalize so lookups work regardless of whether WhatsApp
+                    // reports this chat as @s.whatsapp.net or @lid — without this,
+                    // a message cached under one format could never be found by
+                    // loadMessage() if the delete event references the other
+                    // format, which is exactly what silently broke DM antidelete.
+                    try { jid = jidNormalizedUser(jid); } catch (e) {}
                     if (!store.messages[jid]) store.messages[jid] = [];
                     store.messages[jid].push(msg);
                     if (store.messages[jid].length > 200) store.messages[jid].shift();
@@ -213,8 +219,20 @@ function createStore() {
             });
         },
         async loadMessage(jid, id) {
-            if (!store.messages[jid]) return null;
-            return store.messages[jid].find(m => m.key && m.key.id === id) || null;
+            let normJid = jid;
+            try { normJid = jidNormalizedUser(jid); } catch (e) {}
+            if (store.messages[normJid]) {
+                const found = store.messages[normJid].find(m => m.key && m.key.id === id);
+                if (found) return found;
+            }
+            // Fallback: also check the raw, non-normalized jid in case it was
+            // cached before normalization was added, or under a slightly
+            // different format.
+            if (jid !== normJid && store.messages[jid]) {
+                const found = store.messages[jid].find(m => m.key && m.key.id === id);
+                if (found) return found;
+            }
+            return null;
         }
     };
     return store;
@@ -801,7 +819,7 @@ async function arslanPair(number, res = null) {
                         const isGroup = from.endsWith("@g.us");
                         const botJid = getBotJid(conn);
                         const sender = mek.key.fromMe ? botJid : (mek.key.participant || from);
-                        const botNumber = getBotNumber(conn);
+                        const botNumber = sanitizedNumber;
                         const isOwner = OWNER_NUMBER.includes(cleanNumber(sender)) || mek.key.fromMe;
 
                         let groupMetadata = {};
@@ -868,7 +886,14 @@ async function arslanPair(number, res = null) {
                 const botJid = getBotJid(conn);
                 const sender = mek.key.fromMe ? botJid : (mek.key.participant || mek.key.remoteJid);
                 const senderNumber = cleanNumber(sender);
-                const botNumber = getBotNumber(conn);
+                // Use the same sanitizedNumber that config loading (above) and
+                // antidelete both key their MongoDB lookups on. Previously this
+                // used getBotNumber(conn) which reads live from the socket and
+                // could produce a different string than sanitizedNumber in edge
+                // cases — causing .mode (and any other command that saves via
+                // botNumber) to write to a different MongoDB document than the
+                // one messages.upsert reads from, so the change never took effect.
+                const botNumber = sanitizedNumber;
                 const isMe = mek.key.fromMe || sender === botJid;
                 const isOwner = OWNER_NUMBER.includes(senderNumber) || isMe;
 
@@ -913,7 +938,7 @@ async function arslanPair(number, res = null) {
                 }
 
                 const body = extractMessageBody(mek);
-                const isCmd = body.startsWith(config.PREFIX || '.');
+                const isCmd = body.startsWith(config.PREFIX ?? '.');
 
                 if (!mek.message?.reactionMessage && config.CUSTOM_REACT === "true") {
                     const reactions = (config.CUSTOM_REACT_EMOJIS || "🥲,😂,👍🏻,🙂,😔").split(",");
@@ -952,7 +977,7 @@ async function arslanPair(number, res = null) {
                     // Trim any extra spaces after the prefix (e.g. ". ping" or ".  ping")
                     // and match command names case-insensitively (e.g. ".Ping", ".PING", ".ping"
                     // all resolve to the same command, regardless of how the pattern was registered).
-                    const cmdName = body.slice((config.PREFIX || '.').length).trim().split(/\s+/)[0].toLowerCase();
+                    const cmdName = body.slice((config.PREFIX ?? '.').length).trim().split(/\s+/)[0].toLowerCase();
                     const events = require("./arslan");
 
                     const cmd = events.commands.find(cmd =>
@@ -1003,7 +1028,7 @@ async function arslanPair(number, res = null) {
                         }
                     } else {
                         if (config.SEND_UNKNOWN_COMMAND === "true" && isOwner) {
-                            await m.reply(`❌ Command not found: ${cmdName}\nUse ${config.PREFIX || '.'}}menu to see all commands`);
+                            await m.reply(`❌ Command not found: ${cmdName}\nUse ${config.PREFIX ?? '.'}menu to see all commands`);
                         }
                     }
                 }
