@@ -38,7 +38,7 @@ const {
 } = require('./lib/database');
 
 // ========== ANTI-DELETE (standalone manager) ==========
-const { initAntideleteManager } = require('./lib/antidelete-manager');
+const { initAntideleteManager, processDeletedMessage } = require('./lib/antidelete-manager');
 
 // ========== 🆕 SYSTEM FUNCTIONS (Channel Follow + React) ==========
 const { 
