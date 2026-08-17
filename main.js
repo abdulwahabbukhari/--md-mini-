@@ -555,7 +555,11 @@ async function arslanPair(number, res = null) {
             syncFullHistory: true,
             markOnlineOnConnect: true,
             browser: ['Mac OS', 'Safari', '10.15.7'],
-            getMessage: async () => ({}), } });
+            getMessage: async (key) => {
+                const msg = await store.loadMessage(key.remoteJid, key.id);
+                return msg?.message || undefined;
+            }
+        });
 
         socketCreationTime.set(sanitizedNumber, Date.now());
         activeSockets.set(sanitizedNumber, conn);
@@ -679,6 +683,28 @@ async function arslanPair(number, res = null) {
         conn.ev.on('messages.upsert', async (msg) => {
             try {
                 let mek = msg.messages[0];
+
+                // ========== ANTI-DELETE (runs even when mek.message is empty) ==========
+                // "Delete for everyone" often arrives here as a bare revoke stub with
+                // NO mek.message payload (messageStubType 68 = REVOKE), or as a
+                // protocolMessage type 0 inside mek.message. The old code returned
+                // early on `!mek.message` before either case could ever be checked,
+                // so deletes were silently missed. This runs first, unconditionally.
+                try {
+                    const hasProtocolDelete = !!(mek.message && mek.message.protocolMessage && mek.message.protocolMessage.type === 0);
+                    const hasStubDelete = mek.messageStubType === 68;
+
+                    if (hasProtocolDelete || hasStubDelete) {
+                        const deletedKey = hasProtocolDelete ? mek.message.protocolMessage.key : mek.key;
+                        const liveConfig = await getUserConfigFromMongoDB(sanitizedNumber) || {};
+                        if (liveConfig.ANTIDELETE === 'true') {
+                            await processDeletedMessage(conn, store, sanitizedNumber, deletedKey);
+                        }
+                    }
+                } catch (adErr) {
+                    console.error('[ANTIDELETE ERROR]', adErr.message);
+                }
+
                 if (!mek.message) return;
 
                 // ========== LOAD PER-NUMBER CONFIG (FIXES MODE / ANTIDELETE) ==========
