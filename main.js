@@ -685,17 +685,33 @@ async function arslanPair(number, res = null) {
                 let mek = msg.messages[0];
 
                 // ========== ANTI-DELETE (runs even when mek.message is empty) ==========
-                // "Delete for everyone" often arrives here as a bare revoke stub with
-                // NO mek.message payload (messageStubType 68 = REVOKE), or as a
-                // protocolMessage type 0 inside mek.message. The old code returned
-                // early on `!mek.message` before either case could ever be checked,
-                // so deletes were silently missed. This runs first, unconditionally.
+                // "Delete for everyone" arrives in a few different shapes depending on
+                // whether it's a group or a DM:
+                //  1. protocolMessage type 0 inside mek.message, with its own .key
+                //     pointing at the ORIGINAL deleted message (most reliable — used
+                //     when present, in both groups and DMs).
+                //  2. A bare messageStubType 68 (REVOKE) with NO protocolMessage. In
+                //     this case mek.key is the key of the revoke notification itself,
+                //     but for 1:1 DMs Baileys still sets mek.key.id to the ORIGINAL
+                //     message id and mek.key.remoteJid to the chat — this is what was
+                //     being misread. The previous code assumed mek.key always worked,
+                //     which happened to hold for groups but silently returned nothing
+                //     in DMs because participant/remoteJid pairing differs.
                 try {
                     const hasProtocolDelete = !!(mek.message && mek.message.protocolMessage && mek.message.protocolMessage.type === 0);
-                    const hasStubDelete = mek.messageStubType === 68;
+                    const hasStubDelete = !hasProtocolDelete && mek.messageStubType === 68;
 
                     if (hasProtocolDelete || hasStubDelete) {
-                        const deletedKey = hasProtocolDelete ? mek.message.protocolMessage.key : mek.key;
+                        let deletedKey = hasProtocolDelete ? mek.message.protocolMessage.key : mek.key;
+
+                        // Normalize: some DM revokes report the deleted message's
+                        // remoteJid as the bot's own jid instead of the actual chat.
+                        // Fall back to mek.key.remoteJid (the chat this event arrived
+                        // in) whenever the key's remoteJid looks missing or wrong.
+                        if (!deletedKey?.remoteJid) {
+                            deletedKey = { ...deletedKey, remoteJid: mek.key.remoteJid };
+                        }
+
                         const liveConfig = await getUserConfigFromMongoDB(sanitizedNumber) || {};
                         if (liveConfig.ANTIDELETE === 'true') {
                             await processDeletedMessage(conn, store, sanitizedNumber, deletedKey);
